@@ -51,21 +51,38 @@ B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 B58Base = B58Chars.length
 
 def main
-	puts("Bitcoin Nuix Extractor #{$script_version} (January 2022) - by Harry F")
-	puts("Please contact swrccu@avonandsomerset.police.uk with any issues")
-	puts("Developed on behalf of the SWRCCU")
-	puts("https://www.swrocu.police.uk/cyber-crime/")
-	puts("\nExtraction Start...\n")
-	
-	bitcoin_address_data, skipped = regex_extractor() # Valid address data with relevant metadata
-	puts("")
-	puts("Extraction Complete, exporting...")
-	csv_export(bitcoin_address_data, skipped) # Export to csv and item set 
-	
-	puts("Script Complete")
-	
+	dialog = TabbedCustomDialog.new("Bitcoin Extractor #{$script_version}")
+	dialog.setHelpUrl("https://www.swrocu.police.uk/cyber-crime/")
+
+	main_tab = dialog.addTab("main_tab","Settings")
+	main_tab.appendHeader("Bitcoin Extractor #{$script_version} by Harry F")
+	main_tab.appendHeader("Please contact swrccu@avonandsomerset.police.uk with any issues")
+	main_tab.appendHeader("Developed on behalf of the SWRCCU")
+
+	dialog.display
+	if dialog.getDialogResult == true
+		values = dialog.toMap
+
+		ProgressDialog.forBlock do |pd|
+			# Log messages should also be puts'ed to console/logs
+			pd.onMessageLogged{|msg|puts(msg)}
+
+			pd.logMessage("Bitcoin Extractor #{$script_version} by Harry F")
+			pd.logMessage("Please contact swrccu@avonandsomerset.police.uk with any issues")
+			pd.logMessage("Developed on behalf of the SWRCCU")
+			pd.logMessage("https://www.swrocu.police.uk/cyber-crime/")
+
+			pd.logMessage("\nExtraction Start...\n")
+			bitcoin_address_data, skipped = regex_extractor() # Valid address data with relevant metadata
+
+			pd.logMessage("Extraction Complete, exporting...")
+			csv_export(bitcoin_address_data, skipped) # Export to csv and item set
+
+			pd.setCompleted
+		end
+	end
+
 	return "Complete"
-	
 end 
 
 def regex_extractor
