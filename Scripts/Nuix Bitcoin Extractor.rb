@@ -1,7 +1,6 @@
 '''
 Script to extract all P2PKH, P2SH, Bech32 Bitcoin addresses/Extended Public and Private Keys (xPubs/xPrvs)
 from any Nuix Workstation instance. Hits exported to csv alongside GUID and File Path.
-Version 5.1 supports extraction of yPubs, Yprvs, zPubs, zPrvs
 
 P2PKH and P2SH validation code from savasadar github 
 https://gist.github.com/savasadar/efd9e2a6a6540dd2b33b2a24a7996c8e
@@ -18,9 +17,7 @@ Written By Harry F - SWRCCU
 Contact: swrccu@avonandsomerset.police.uk with any queries 
 Developed on behalf of the SWRCCU
 https://www.swrocu.police.uk/cyber-crime/
-Version 5.1
 Tested against NUIX 9.6
-January 2022
 '''
 
 # Needs Case: true
@@ -47,12 +44,14 @@ NuixConnection.setCurrentNuixVersion(NUIX_VERSION)
 require 'csv'
 require 'digest'
 
+$script_version = "v5.1"
+
 # Constants for Base58 decode verification 
 B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 B58Base = B58Chars.length
 
 def main
-	puts("Bitcoin Nuix Extractor v5.1 (January 2022) - by Harry F")
+	puts("Bitcoin Nuix Extractor #{$script_version} (January 2022) - by Harry F")
 	puts("Please contact swrccu@avonandsomerset.police.uk with any issues")
 	puts("Developed on behalf of the SWRCCU")
 	puts("https://www.swrocu.police.uk/cyber-crime/")
