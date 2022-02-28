@@ -138,11 +138,15 @@ def regex_extractor
 
 end 
 
-def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to csv, hits to item set
+def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export validated hits, errors to csv, hits to item set
+	if export_directory.nil?
+		export_directory = File.dirname(__FILE__)
+	end
+
 	case_name = $current_case.getName
 	
 	csv_name = case_name + " - BTC found.csv"
-	file_path = File.join(File.dirname(__FILE__), csv_name)
+	file_path = File.join(export_directory, csv_name)
 	
 	item_set_items = []
 
@@ -167,7 +171,7 @@ def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to
 	puts("Hits Item Set export complete")	
 	
 	csv_name = case_name + " - BTC errors.csv"
-	file_path = File.join(File.dirname(__FILE__), csv_name)
+	file_path = File.join(File.dirname(export_directory), csv_name)
 	
 	CSV.open(file_path, "w") do |csv| # Error items export 
 		csv << ['Following items failed to scan for BTC - file size too large']
