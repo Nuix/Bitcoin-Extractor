@@ -25,6 +25,25 @@ January 2022
 
 # Needs Case: true
 
+# Boostrap NX which we will use for
+# - Settings dialog
+# - Progress dialog
+script_directory = File.dirname(__FILE__)
+require File.join(script_directory,"Nx.jar")
+java_import "com.nuix.nx.NuixConnection"
+java_import "com.nuix.nx.LookAndFeelHelper"
+java_import "com.nuix.nx.dialogs.ChoiceDialog"
+java_import "com.nuix.nx.dialogs.TabbedCustomDialog"
+java_import "com.nuix.nx.dialogs.CommonDialogs"
+java_import "com.nuix.nx.dialogs.ProgressDialog"
+java_import "com.nuix.nx.dialogs.ProcessingStatusDialog"
+java_import "com.nuix.nx.digest.DigestHelper"
+java_import "com.nuix.nx.controls.models.Choice"
+
+LookAndFeelHelper.setWindowsIfMetal
+NuixConnection.setUtilities($utilities)
+NuixConnection.setCurrentNuixVersion(NUIX_VERSION)
+
 require 'csv'
 require 'digest'
 
@@ -33,7 +52,6 @@ B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 B58Base = B58Chars.length
 
 def main
-
 	puts("Bitcoin Nuix Extractor v5.1 (January 2022) - by Harry F")
 	puts("Please contact swrccu@avonandsomerset.police.uk with any issues")
 	puts("Developed on behalf of the SWRCCU")
