@@ -85,7 +85,7 @@ def main
 	return "Complete"
 end 
 
-def regex_extractor
+def regex_extractor(items=nil)
 	
 	# Bitcoin REGEX for initial blanket search 
 	regex = [/1[a-km-zA-HJ-NP-Z1-9]{25,34}/,
@@ -99,14 +99,17 @@ def regex_extractor
 			 /zprv[a-km-zA-HJ-NP-Z1-9]{107,108}/
 			]
 	
-	all_items = $current_case.searchUnsorted("") # Take all items from current case to search REGEX
-	num_items = all_items.length
+	if items.nil?
+		items = $current_case.searchUnsorted("") # Take all items from current case to search REGEX
+	end
+
+	num_items = items.length
 	puts(num_items.to_s + " items detected to search")
 	bitcoin_address_data = [] # [[[item_btc], guid, file_path, item_class], [[item_btc], guid, file_path, item_class].....[]]
 	
 	skipped = [] # [[guid, file_path], [guid, file_path].....[]]
 	
-	all_items.each_with_index do |item, index| # Per each Nuix item within case
+	items.each_with_index do |item, index| # Per each Nuix item within case
 		
 		hits = []
 		item_btc = []
