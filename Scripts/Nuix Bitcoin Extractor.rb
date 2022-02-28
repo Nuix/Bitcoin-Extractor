@@ -53,14 +53,14 @@ B58Base = B58Chars.length
 
 def main
 	dialog = TabbedCustomDialog.new("Bitcoin Extractor #{$script_version}")
-	dialog.setHelpUrl("https://www.swrocu.police.uk/cyber-crime/")
+	dialog.setHelpUrl("https://github.com/Nuix/Bitcoin-Extractor")
 
 	# For documentation on configuring a dialog tab see
 	# https://nuix.github.io/Nx/com/nuix/nx/dialogs/CustomTabPanel.html
 	main_tab = dialog.addTab("main_tab","Settings")
 	main_tab.appendHeader("Bitcoin Extractor #{$script_version} by Harry F")
 	main_tab.appendHeader("Please contact swrccu@avonandsomerset.police.uk with any issues")
-	main_tab.appendHeader("Developed on behalf of the SWRCCU")
+	main_tab.appendHeader("Developed on behalf of the SWRCCU - https://www.swrocu.police.uk/cyber-crime/")
 
 	# If there are items selected, allow user to run again only those selected items
 	# or all items if they wish
@@ -71,11 +71,29 @@ def main
 		main_tab.appendRadioButton("use_all_items","Use all #{$current_case.count("")} items in case","input_items_grp",true)
 	end
 
+	default_export_dir = File.join($current_case.getLocation.getAbsolutePath,"BitcoinExtractorResults")
+	main_tab.appendDirectoryChooser("csv_export_directory","CSV Export Directory",default_export_dir)
+
+	# Here we can define validations for the settings where if something doesn't
+	# meet our requirements we can enforce user fixing it before running
+	dialog.validateBeforeClosing do |values|
+		if values["csv_export_directory"].strip.empty?
+			CommonDialogs.showWarning("Please provide a value for 'CSV Export Directory'")
+			next false
+		end
+
+		next true
+	end
+
+	# Display the settings dialog
 	dialog.display
+
+	# If all went well, lets get to work
 	if dialog.getDialogResult == true
 		# Store values from settings dialog into a hash/map
 		values = dialog.toMap
 
+		# Display a progress dialog while we are working on things
 		ProgressDialog.forBlock do |pd|
 			# Log messages should also be puts'ed to console/logs
 			pd.onMessageLogged{|msg|puts(msg)}
@@ -98,7 +116,7 @@ def main
 			bitcoin_address_data, skipped = regex_extractor(items_to_process,pd) # Valid address data with relevant metadata
 
 			pd.logMessage("Extraction Complete, exporting...")
-			csv_export(bitcoin_address_data, skipped) # Export to csv and item set
+			csv_export(bitcoin_address_data, skipped, pd, values["csv_export_directory"]) # Export to csv and item set
 
 			pd.setCompleted
 		end
@@ -201,7 +219,7 @@ def regex_extractor(items=nil,pd)
 
 end 
 
-def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export validated hits, errors to csv, hits to item set
+def csv_export(bitcoin_address_data, skipped, pd, export_directory=nil) # Export validated hits, errors to csv, hits to item set
 	if export_directory.nil?
 		export_directory = File.dirname(__FILE__)
 	end
@@ -210,6 +228,7 @@ def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export val
 	
 	csv_name = case_name + " - BTC found.csv"
 	file_path = File.join(export_directory, csv_name)
+	pd.logMessage("Generating #{file_path}")
 	
 	item_set_items = []
 
@@ -222,7 +241,7 @@ def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export val
 			end
 		end 
 	end 
-	puts("Hits CSV export complete")
+	pd.logMessage("Hits CSV export complete")
 	
 	# Export items to Item set within Nuix
 	item_set = create_item_set("Bitcoin Extraction")
@@ -231,10 +250,11 @@ def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export val
 		}
 	
 	item_set.addItems(item_set_items, batch_settings)
-	puts("Hits Item Set export complete")	
+	pd.logMessage("Hits Item Set export complete")	
 	
 	csv_name = case_name + " - BTC errors.csv"
 	file_path = File.join(File.dirname(export_directory), csv_name)
+	pd.logMessage("Generating #{file_path}")
 	
 	CSV.open(file_path, "w") do |csv| # Error items export 
 		csv << ['Following items failed to scan for BTC - file size too large']
@@ -243,7 +263,7 @@ def csv_export(bitcoin_address_data, skipped, export_directory=nil) # Export val
 			csv << [guid, type, file_path]
 		end 
 	end 
-	puts("Error GUIDS CSV export complete")
+	pd.logMessage("Error GUIDS CSV export complete")
 	
 end 
 
