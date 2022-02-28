@@ -95,7 +95,7 @@ def main
 			end
 
 			pd.logMessage("\nExtraction Start...\n")
-			bitcoin_address_data, skipped = regex_extractor(items_to_process) # Valid address data with relevant metadata
+			bitcoin_address_data, skipped = regex_extractor(items_to_process,pd) # Valid address data with relevant metadata
 
 			pd.logMessage("Extraction Complete, exporting...")
 			csv_export(bitcoin_address_data, skipped) # Export to csv and item set
@@ -107,7 +107,7 @@ def main
 	return "Complete"
 end 
 
-def regex_extractor(items=nil)
+def regex_extractor(items=nil,pd)
 	
 	# Bitcoin REGEX for initial blanket search 
 	regex = [/1[a-km-zA-HJ-NP-Z1-9]{25,34}/,
@@ -126,13 +126,15 @@ def regex_extractor(items=nil)
 	end
 
 	num_items = items.length
-	puts(num_items.to_s + " items will be searched...")
+	pd.logMessage("#{num_items} items will be searched...")
 	bitcoin_address_data = [] # [[[item_btc], guid, file_path, item_class], [[item_btc], guid, file_path, item_class].....[]]
 	
 	skipped = [] # [[guid, file_path], [guid, file_path].....[]]
 	
-	items.each_with_index do |item, index| # Per each Nuix item within case
-		
+	items.each_with_index do |item, item_index| # Per each Nuix item within case
+		pd.setMainProgress(item_index+1,items.size)
+		pd.setMainStatus("Processing Item #{item_index+1}/#{items.size}")
+
 		hits = []
 		item_btc = []
 		
@@ -142,7 +144,7 @@ def regex_extractor(items=nil)
 		file_size = item.getFileSize
 		
 		if file_size > 2000000000 # Won't scan items larger than 2 GB
-			puts("Item too large, skipping: " + guid)
+			pg.logMessage("Item too large, skipping: #{guid}")
 			type = item.getKind
 			skipped << [guid, type, file_path] # For later output
 			next
@@ -155,7 +157,7 @@ def regex_extractor(items=nil)
 				item_btc = [item_btc, hits].compact.reduce([], :|)
 			end
 		rescue # Catch non fatal issues
-			puts("Error with item, skipping: " + guid)
+			pd.logMessage("Error with item, skipping: #{guid}")
 			type = item.getKind
 			skipped << [guid, type, file_path]
 			
@@ -163,21 +165,23 @@ def regex_extractor(items=nil)
 		
 		verified_item_btc = []
 		
-		item_btc.each do |poss_addr| # verify each Regex hit
-			begin 
+		item_btc.each_with_index do |poss_addr,addr_index| # verify each Regex hit
+			pd.setSubProgress(addr_index+1,item_btc.size)
+			pd.setSubStatus("Verifying #{addr_index+1}/#{item_btc.size}")
+			begin
 				if poss_addr.downcase.start_with?("xpub", "xprv", "ypub", "yprv", "zpub", "zprv") # Whitelist keys
 					verified_item_btc << poss_addr
-					puts((index+1).to_s + '/' + num_items.to_s + " - Verified key found: " + poss_addr)
+					pd.logMessage("  Verified key found: #{poss_addr}")
 				elsif poss_addr.downcase.start_with?("bc1") # Bech32 verification
 					hrp, data = Bech32.decode(poss_addr)
 					if data.to_s != "" # Valid address
 						verified_item_btc << poss_addr
-						puts((index+1).to_s + '/' + num_items.to_s + " - Verified address found: " + poss_addr)
+						pd.logMessage("  Verified address found: #{poss_addr}")
 					end				
 				elsif verify_address(poss_addr) # If address verified 
 					if poss_addr.start_with?("1", "3")
 						verified_item_btc << poss_addr
-						puts((index+1).to_s + '/' + num_items.to_s + " - Verified address found: " + poss_addr)
+						pd.logMessage("  Verified address found: #{poss_addr}")
 					end
 				end 
 			rescue
@@ -188,8 +192,8 @@ def regex_extractor(items=nil)
 			bitcoin_address_data << [verified_item_btc.uniq, guid, file_path, item] # Add verified Bitcoin addresses/keys to be outputted later
 		end  
 		
-		if (index+1) % 1000 == 0 # Give progress feedback every x number of items 
-			puts('Progress: ' + (index+1).to_s + '/' + num_items.to_s + ' - ' + bitcoin_address_data.length.to_s + ' items with valid hits')
+		if (item_index+1) % 1000 == 0 # Give progress feedback every x number of items 
+			pd.logMessage("#{bitcoin_address_data.size} items with valid hits")
 		end
 	end	
 	
