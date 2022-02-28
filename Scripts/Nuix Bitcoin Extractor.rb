@@ -45,7 +45,7 @@ NuixConnection.setCurrentNuixVersion(NUIX_VERSION)
 require 'csv'
 require 'digest'
 
-$script_version = "v5.1"
+$script_version = "v5.2"
 
 # Constants for Base58 decode verification 
 B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
