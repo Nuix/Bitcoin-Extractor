@@ -25,6 +25,7 @@ Tested against NUIX 9.6
 # Boostrap NX which we will use for
 # - Settings dialog
 # - Progress dialog
+# Nx is available on GitHub here: https://github.com/Nuix/Nx
 script_directory = File.dirname(__FILE__)
 require File.join(script_directory,"Nx.jar")
 java_import "com.nuix.nx.NuixConnection"
@@ -54,13 +55,25 @@ def main
 	dialog = TabbedCustomDialog.new("Bitcoin Extractor #{$script_version}")
 	dialog.setHelpUrl("https://www.swrocu.police.uk/cyber-crime/")
 
+	# For documentation on configuring a dialog tab see
+	# https://nuix.github.io/Nx/com/nuix/nx/dialogs/CustomTabPanel.html
 	main_tab = dialog.addTab("main_tab","Settings")
 	main_tab.appendHeader("Bitcoin Extractor #{$script_version} by Harry F")
 	main_tab.appendHeader("Please contact swrccu@avonandsomerset.police.uk with any issues")
 	main_tab.appendHeader("Developed on behalf of the SWRCCU")
 
+	# If there are items selected, allow user to run again only those selected items
+	# or all items if they wish
+	if $current_selected_items.nil? == false && $current_selected_items.size > 0
+		main_tab.appendRadioButton("use_selected_items","Use #{$current_selected_items.size} selected items","input_items_grp",true)
+		main_tab.appendRadioButton("use_all_items","Use all #{$current_case.count("")} items in case","input_items_grp",false)
+	else
+		main_tab.appendRadioButton("use_all_items","Use all #{$current_case.count("")} items in case","input_items_grp",true)
+	end
+
 	dialog.display
 	if dialog.getDialogResult == true
+		# Store values from settings dialog into a hash/map
 		values = dialog.toMap
 
 		ProgressDialog.forBlock do |pd|
@@ -72,8 +85,17 @@ def main
 			pd.logMessage("Developed on behalf of the SWRCCU")
 			pd.logMessage("https://www.swrocu.police.uk/cyber-crime/")
 
+			# Provide selected items if settings state to do so, otherwise
+			# provide all items in the case
+			items_to_process = nil
+			if values["use_selected_items"]
+				items_to_process = $current_selected_items
+			else
+				items_to_process = $current_case.searchUnsorted("")
+			end
+
 			pd.logMessage("\nExtraction Start...\n")
-			bitcoin_address_data, skipped = regex_extractor() # Valid address data with relevant metadata
+			bitcoin_address_data, skipped = regex_extractor(items_to_process) # Valid address data with relevant metadata
 
 			pd.logMessage("Extraction Complete, exporting...")
 			csv_export(bitcoin_address_data, skipped) # Export to csv and item set
@@ -104,7 +126,7 @@ def regex_extractor(items=nil)
 	end
 
 	num_items = items.length
-	puts(num_items.to_s + " items detected to search")
+	puts(num_items.to_s + " items will be searched...")
 	bitcoin_address_data = [] # [[[item_btc], guid, file_path, item_class], [[item_btc], guid, file_path, item_class].....[]]
 	
 	skipped = [] # [[guid, file_path], [guid, file_path].....[]]
