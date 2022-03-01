@@ -17,7 +17,6 @@ Written By Harry F - SWRCCU
 Contact: swrccu@avonandsomerset.police.uk with any queries 
 Developed on behalf of the SWRCCU
 https://www.swrocu.police.uk/cyber-crime/
-Tested against NUIX 9.6
 '''
 
 # Needs Case: true
