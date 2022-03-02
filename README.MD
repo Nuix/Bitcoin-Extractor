@@ -11,7 +11,7 @@ This repository contains 2 scripts to assist with extraction and verification of
 
 **Important:** This script is mainted by it original author Harry F. of [SWRCCU](https://www.swrocu.police.uk/cyber-crime/).  If you have questions or wish to report an issue, please contact [swrccu@avonandsomerset.police.uk](mailto:swrccu@avonandsomerset.police.uk?subject=Bitcoin%20Extractor).
 
-## Nuix Bitcoint Extractor
+## Nuix Bitcoin Extractor
 
 [Nuix Bitcoin Extractor.rb](https://github.com/Nuix/Bitcoin-Extractor/blob/main/Scripts/Nuix%20Bitcoin%20Extractor.rb)
 
