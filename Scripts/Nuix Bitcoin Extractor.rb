@@ -1,7 +1,6 @@
 '''
 Script to extract all P2PKH, P2SH, Bech32 Bitcoin addresses/Extended Public and Private Keys (xPubs/xPrvs)
 from any Nuix Workstation instance. Hits exported to csv alongside GUID and File Path.
-Version 5.1 supports extraction of yPubs, Yprvs, zPubs, zPrvs
 
 P2PKH and P2SH validation code from savasadar github 
 https://gist.github.com/savasadar/efd9e2a6a6540dd2b33b2a24a7996c8e
@@ -18,40 +17,114 @@ Written By Harry F - SWRCCU
 Contact: swrccu@avonandsomerset.police.uk with any queries 
 Developed on behalf of the SWRCCU
 https://www.swrocu.police.uk/cyber-crime/
-Version 5.1
-Tested against NUIX 9.6
-January 2022
 '''
 
 # Needs Case: true
 
+# Boostrap NX which we will use for
+# - Settings dialog
+# - Progress dialog
+# Nx is available on GitHub here: https://github.com/Nuix/Nx
+script_directory = File.dirname(__FILE__)
+require File.join(script_directory,"Nx.jar")
+java_import "com.nuix.nx.NuixConnection"
+java_import "com.nuix.nx.LookAndFeelHelper"
+java_import "com.nuix.nx.dialogs.ChoiceDialog"
+java_import "com.nuix.nx.dialogs.TabbedCustomDialog"
+java_import "com.nuix.nx.dialogs.CommonDialogs"
+java_import "com.nuix.nx.dialogs.ProgressDialog"
+java_import "com.nuix.nx.dialogs.ProcessingStatusDialog"
+java_import "com.nuix.nx.digest.DigestHelper"
+java_import "com.nuix.nx.controls.models.Choice"
+
+LookAndFeelHelper.setWindowsIfMetal
+NuixConnection.setUtilities($utilities)
+NuixConnection.setCurrentNuixVersion(NUIX_VERSION)
+
 require 'csv'
 require 'digest'
+
+$script_version = "v5.3"
 
 # Constants for Base58 decode verification 
 B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 B58Base = B58Chars.length
 
 def main
+	dialog = TabbedCustomDialog.new("Bitcoin Extractor #{$script_version}")
+	dialog.setHelpUrl("https://github.com/Nuix/Bitcoin-Extractor")
 
-	puts("Bitcoin Nuix Extractor v5.1 (January 2022) - by Harry F")
-	puts("Please contact swrccu@avonandsomerset.police.uk with any issues")
-	puts("Developed on behalf of the SWRCCU")
-	puts("https://www.swrocu.police.uk/cyber-crime/")
-	puts("\nExtraction Start...\n")
-	
-	bitcoin_address_data, skipped = regex_extractor() # Valid address data with relevant metadata
-	puts("")
-	puts("Extraction Complete, exporting...")
-	csv_export(bitcoin_address_data, skipped) # Export to csv and item set 
-	
-	puts("Script Complete")
-	
+	# For documentation on configuring a dialog tab see
+	# https://nuix.github.io/Nx/com/nuix/nx/dialogs/CustomTabPanel.html
+	main_tab = dialog.addTab("main_tab","Settings")
+	main_tab.appendHeader("Bitcoin Extractor #{$script_version} by Harry F")
+	main_tab.appendHeader("Please contact swrccu@avonandsomerset.police.uk with any issues")
+	main_tab.appendHeader("Developed on behalf of the SWRCCU - https://www.swrocu.police.uk/cyber-crime/")
+
+	# If there are items selected, allow user to run again only those selected items
+	# or all items if they wish
+	if $current_selected_items.nil? == false && $current_selected_items.size > 0
+		main_tab.appendRadioButton("use_selected_items","Use #{$current_selected_items.size} selected items","input_items_grp",true)
+		main_tab.appendRadioButton("use_all_items","Use all #{$current_case.count("")} items in case","input_items_grp",false)
+	else
+		main_tab.appendRadioButton("use_all_items","Use all #{$current_case.count("")} items in case","input_items_grp",true)
+	end
+
+	default_export_dir = File.join($current_case.getLocation.getAbsolutePath,"BitcoinExtractorResults")
+	main_tab.appendDirectoryChooser("csv_export_directory","CSV Export Directory",default_export_dir)
+
+	# Here we can define validations for the settings where if something doesn't
+	# meet our requirements we can enforce user fixing it before running
+	dialog.validateBeforeClosing do |values|
+		if values["csv_export_directory"].strip.empty?
+			CommonDialogs.showWarning("Please provide a value for 'CSV Export Directory'")
+			next false
+		end
+
+		next true
+	end
+
+	# Display the settings dialog
+	dialog.display
+
+	# If all went well, lets get to work
+	if dialog.getDialogResult == true
+		# Store values from settings dialog into a hash/map
+		values = dialog.toMap
+
+		# Display a progress dialog while we are working on things
+		ProgressDialog.forBlock do |pd|
+			# Log messages should also be puts'ed to console/logs
+			pd.onMessageLogged{|msg|puts(msg)}
+
+			pd.logMessage("Bitcoin Extractor #{$script_version} by Harry F")
+			pd.logMessage("Please contact swrccu@avonandsomerset.police.uk with any issues")
+			pd.logMessage("Developed on behalf of the SWRCCU")
+			pd.logMessage("https://www.swrocu.police.uk/cyber-crime/")
+
+			# Provide selected items if settings state to do so, otherwise
+			# provide all items in the case
+			items_to_process = nil
+			if values["use_selected_items"]
+				items_to_process = $current_selected_items
+			else
+				items_to_process = $current_case.searchUnsorted("")
+			end
+
+			pd.logMessage("\nExtraction Start...\n")
+			bitcoin_address_data, skipped = regex_extractor(items_to_process,pd) # Valid address data with relevant metadata
+
+			pd.logMessage("Extraction Complete, exporting...")
+			csv_export(bitcoin_address_data, skipped, pd, values["csv_export_directory"]) # Export to csv and item set
+
+			pd.setCompleted
+		end
+	end
+
 	return "Complete"
-	
 end 
 
-def regex_extractor
+def regex_extractor(items=nil,pd)
 	
 	# Bitcoin REGEX for initial blanket search 
 	regex = [/1[a-km-zA-HJ-NP-Z1-9]{25,34}/,
@@ -65,15 +138,20 @@ def regex_extractor
 			 /zprv[a-km-zA-HJ-NP-Z1-9]{107,108}/
 			]
 	
-	all_items = $current_case.searchUnsorted("") # Take all items from current case to search REGEX
-	num_items = all_items.length
-	puts(num_items.to_s + " items detected to search")
+	if items.nil?
+		items = $current_case.searchUnsorted("") # Take all items from current case to search REGEX
+	end
+
+	num_items = items.length
+	pd.logMessage("#{num_items} items will be searched...")
 	bitcoin_address_data = [] # [[[item_btc], guid, file_path, item_class], [[item_btc], guid, file_path, item_class].....[]]
 	
 	skipped = [] # [[guid, file_path], [guid, file_path].....[]]
 	
-	all_items.each_with_index do |item, index| # Per each Nuix item within case
-		
+	items.each_with_index do |item, item_index| # Per each Nuix item within case
+		pd.setMainProgress(item_index+1,items.size)
+		pd.setMainStatus("Processing Item #{item_index+1}/#{items.size}")
+
 		hits = []
 		item_btc = []
 		
@@ -83,7 +161,7 @@ def regex_extractor
 		file_size = item.getFileSize
 		
 		if file_size > 2000000000 # Won't scan items larger than 2 GB
-			puts("Item too large, skipping: " + guid)
+			pd.logMessage("Item too large, skipping: #{guid}")
 			type = item.getKind
 			skipped << [guid, type, file_path] # For later output
 			next
@@ -96,7 +174,7 @@ def regex_extractor
 				item_btc = [item_btc, hits].compact.reduce([], :|)
 			end
 		rescue # Catch non fatal issues
-			puts("Error with item, skipping: " + guid)
+			pd.logMessage("Error with item, skipping: #{guid}")
 			type = item.getKind
 			skipped << [guid, type, file_path]
 			
@@ -104,21 +182,23 @@ def regex_extractor
 		
 		verified_item_btc = []
 		
-		item_btc.each do |poss_addr| # verify each Regex hit
-			begin 
+		item_btc.each_with_index do |poss_addr,addr_index| # verify each Regex hit
+			pd.setSubProgress(addr_index+1,item_btc.size)
+			pd.setSubStatus("Verifying #{addr_index+1}/#{item_btc.size}")
+			begin
 				if poss_addr.downcase.start_with?("xpub", "xprv", "ypub", "yprv", "zpub", "zprv") # Whitelist keys
 					verified_item_btc << poss_addr
-					puts((index+1).to_s + '/' + num_items.to_s + " - Verified key found: " + poss_addr)
+					pd.logMessage("  Verified key found: #{poss_addr}")
 				elsif poss_addr.downcase.start_with?("bc1") # Bech32 verification
 					hrp, data = Bech32.decode(poss_addr)
 					if data.to_s != "" # Valid address
 						verified_item_btc << poss_addr
-						puts((index+1).to_s + '/' + num_items.to_s + " - Verified address found: " + poss_addr)
+						pd.logMessage("  Verified address found: #{poss_addr}")
 					end				
 				elsif verify_address(poss_addr) # If address verified 
 					if poss_addr.start_with?("1", "3")
 						verified_item_btc << poss_addr
-						puts((index+1).to_s + '/' + num_items.to_s + " - Verified address found: " + poss_addr)
+						pd.logMessage("  Verified address found: #{poss_addr}")
 					end
 				end 
 			rescue
@@ -127,22 +207,24 @@ def regex_extractor
 	
 		if verified_item_btc != [] # Only output if confirmed addresses present
 			bitcoin_address_data << [verified_item_btc.uniq, guid, file_path, item] # Add verified Bitcoin addresses/keys to be outputted later
+			pd.logMessage("#{bitcoin_address_data.size} items with valid hits")
 		end  
-		
-		if (index+1) % 1000 == 0 # Give progress feedback every x number of items 
-			puts('Progress: ' + (index+1).to_s + '/' + num_items.to_s + ' - ' + bitcoin_address_data.length.to_s + ' items with valid hits')
-		end
 	end	
 	
 	return bitcoin_address_data, skipped
 
 end 
 
-def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to csv, hits to item set
+def csv_export(bitcoin_address_data, skipped, pd, export_directory=nil) # Export validated hits, errors to csv, hits to item set
+	if export_directory.nil?
+		export_directory = File.dirname(__FILE__)
+	end
+
 	case_name = $current_case.getName
 	
 	csv_name = case_name + " - BTC found.csv"
-	file_path = File.join(File.dirname(__FILE__), csv_name)
+	file_path = File.join(export_directory, csv_name)
+	pd.logMessage("Generating #{file_path}")
 	
 	item_set_items = []
 
@@ -155,7 +237,7 @@ def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to
 			end
 		end 
 	end 
-	puts("Hits CSV export complete")
+	pd.logMessage("Hits CSV export complete")
 	
 	# Export items to Item set within Nuix
 	item_set = create_item_set("Bitcoin Extraction")
@@ -164,10 +246,11 @@ def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to
 		}
 	
 	item_set.addItems(item_set_items, batch_settings)
-	puts("Hits Item Set export complete")	
+	pd.logMessage("Hits Item Set export complete")	
 	
 	csv_name = case_name + " - BTC errors.csv"
-	file_path = File.join(File.dirname(__FILE__), csv_name)
+	file_path = File.join(export_directory, csv_name)
+	pd.logMessage("Generating #{file_path}")
 	
 	CSV.open(file_path, "w") do |csv| # Error items export 
 		csv << ['Following items failed to scan for BTC - file size too large']
@@ -176,7 +259,7 @@ def csv_export(bitcoin_address_data, skipped) # Export validated hits, errors to
 			csv << [guid, type, file_path]
 		end 
 	end 
-	puts("Error GUIDS CSV export complete")
+	pd.logMessage("Error GUIDS CSV export complete")
 	
 end 
 
