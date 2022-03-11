@@ -9,13 +9,13 @@ View the GitHub project [here](https://github.com/Nuix/Bitcoin-Extractor) or dow
 
 This repository contains 2 scripts to assist with extraction and verification of Bitcoin addresses.
 
-**Important:** This script is mainted by it original author Harry F. of [SWRCCU](https://www.swrocu.police.uk/cyber-crime/).  If you have questions or wish to report an issue, please contact [swrccu@avonandsomerset.police.uk](mailto:swrccu@avonandsomerset.police.uk?subject=Bitcoin%20Extractor).
+**Important:** This script is mainted by it's original author Harry F. of [SWRCCU](https://www.swrocu.police.uk/cyber-crime/).  If you have questions or wish to report an issue, please contact [swrccu@avonandsomerset.police.uk](mailto:swrccu@avonandsomerset.police.uk?subject=Bitcoin%20Extractor).
 
 ## Nuix Bitcoin Extractor
 
 [Nuix Bitcoin Extractor.rb](https://github.com/Nuix/Bitcoin-Extractor/blob/main/Scripts/Nuix%20Bitcoin%20Extractor.rb)
 
-Script to extract all `P2PKH`, `P2SH`, `Bech32` Bitcoin addresses/Extended Public and Private Keys (`xPubs`/`xPrvs`) from any Nuix Workstation instance. Located addresses are exported to a CSV file alongside GUID and File Path.
+Script to extract all `P2PKH`, `P2SH`, `Bech32` Bitcoin addresses/Extended Public and Private Keys (`xPubs`/`xPrvs`) from any Nuix Workstation instance. Located addresses are exported to a CSV file alongside *GUID* and *File Path*.
 
 **P2PKH and P2SH validation code from savasadar github**
 
@@ -26,7 +26,7 @@ https://gist.github.com/savasadar/efd9e2a6a6540dd2b33b2a24a7996c8e
 https://github.com/sipa/bech32/tree/master/ref/ruby
 
 
-Items which have an address located within them are added to an item set named **Bitcoin Extraction**.  Located addresses are recorded to a CSV in the specified output directory.  Errors are recorded to second CSV in the specified output directory.
+Items which have an address located within them are added to an item set named **Bitcoin Extraction**.  Located addresses are recorded to a CSV in the specified output directory.  Errors are recorded to a second CSV in the specified output directory.
 
 **LIMITATION:** Items with a **File Size** greater than 2GB (2000000000 bytes) are skipped to avoid possible issue where content text of item can exceed Java maximum String length of 2147483647 bytes.
 
@@ -38,7 +38,15 @@ Items which have an address located within them are added to an item set named *
 
 Script to ingest Nuix Bitcoin extraction script CSV result and lookup each address for num transactions/other btc details.
 
-Any invalid addresses are void, `xyzPubs`/`xyzPrivs` are not looked up. 
+Any invalid addresses are void, `xyzPubs`/`xyzPrivs` are not looked up.
+
+Once you have a CSV produced by **Nuix Bitcoin Extractor.rb**:
+
+1. Copy that CSV to the same directory as the **OSINT Nuix BTC Extractor verify.py**
+1. Run **OSINT Nuix BTC Extractor verify.py** in Python
+1. When prompted, enter the number that corresponds to the CSV you wish to run the script on.
+
+See **Setup** section below for details on first time setup of the **OSINT Nuix BTC Extractor Verify** script.
 
 # Getting Started
 
@@ -49,15 +57,18 @@ Begin by downloading the latest release of this code.  Extract the contents of t
 - `%appdata%\Nuix\Scripts` - User level script directory
 - `%programdata%\Nuix\Scripts` - System level script directory
 
-**TODO**: Python script needs dependency `blockchain`.  Should include instructions to get that in place.
+[OSINT Nuix BTC Extractor verify.py](https://github.com/Nuix/Bitcoin-Extractor/blob/main/Scripts/OSINT%20Nuix%20BTC%20Extractor%20verify.py) is a secondary script to validate extracted addresses in a CSV.  It is intended to be ran outside of Nuix on an *internet connected machine*.  On the *internet connected machine* in which you intend to to run **OSINT Nuix BTC Extractor Verify**:
+
+1. Install [Python 3.x](https://www.python.org/downloads/) (script tested against Python 3.6)
+1. Once installed, from a Command Prompt / Terminal shell type `pip install blockchain` to install module dependencies
 
 # Cloning this Repository
 
-This script relies on code from [Nx](https://github.com/Nuix/Nx) to present a settings dialog and progress dialog.  This JAR file is not included in the repository (although it is included in release downloads).  If you clone this repository, you will also want to obtain a copy of Nx.jar by either:
+The **Nuix Bitcoin Extractor.rb** script relies on code from [Nx](https://github.com/Nuix/Nx) to present a settings dialog and progress dialog.  This JAR file is not included in the repository (although it is included in release downloads).  If you clone this repository, you will also want to obtain a copy of Nx.jar by either:
 1. Building it from [the source](https://github.com/Nuix/Nx)
 2. Downloading an already built JAR file from the [Nx releases](https://github.com/Nuix/Nx/releases)
 
-Once you have a copy of Nx.jar, make sure to include it in the same directory as the script.
+Once you have a copy of Nx.jar, make sure to include it in the same directory as the **Nuix Bitcoin Extractor.rb** script.
 
 # License
 
