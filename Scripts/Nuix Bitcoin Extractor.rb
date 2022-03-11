@@ -44,7 +44,7 @@ NuixConnection.setCurrentNuixVersion(NUIX_VERSION)
 require 'csv'
 require 'digest'
 
-$script_version = "v5.2"
+$script_version = "v5.3"
 
 # Constants for Base58 decode verification 
 B58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -161,7 +161,7 @@ def regex_extractor(items=nil,pd)
 		file_size = item.getFileSize
 		
 		if file_size > 2000000000 # Won't scan items larger than 2 GB
-			pg.logMessage("Item too large, skipping: #{guid}")
+			pd.logMessage("Item too large, skipping: #{guid}")
 			type = item.getKind
 			skipped << [guid, type, file_path] # For later output
 			next
@@ -207,11 +207,8 @@ def regex_extractor(items=nil,pd)
 	
 		if verified_item_btc != [] # Only output if confirmed addresses present
 			bitcoin_address_data << [verified_item_btc.uniq, guid, file_path, item] # Add verified Bitcoin addresses/keys to be outputted later
-		end  
-		
-		if (item_index+1) % 1000 == 0 # Give progress feedback every x number of items 
 			pd.logMessage("#{bitcoin_address_data.size} items with valid hits")
-		end
+		end  
 	end	
 	
 	return bitcoin_address_data, skipped
@@ -252,7 +249,7 @@ def csv_export(bitcoin_address_data, skipped, pd, export_directory=nil) # Export
 	pd.logMessage("Hits Item Set export complete")	
 	
 	csv_name = case_name + " - BTC errors.csv"
-	file_path = File.join(File.dirname(export_directory), csv_name)
+	file_path = File.join(export_directory, csv_name)
 	pd.logMessage("Generating #{file_path}")
 	
 	CSV.open(file_path, "w") do |csv| # Error items export 
